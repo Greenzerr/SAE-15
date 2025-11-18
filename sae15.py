@@ -63,10 +63,21 @@ def experimentation_5G(file_path):
         "Usage - Mobilité connectée", "Usage - Internet des objets",
         "Usage - Ville intelligente", "Usage - Réalité virtuelle",
         "Usage - Télémédecine", "Usage - Industrie du futur",
-        "Usage - Technique ou R&D", "Usage - Autre"
+        # ### --- CORRECTION --- ###
+        # "Usage - Technique ou R&D", # On vire cette ligne, elle n'existe pas dans le CSV
+        # ### --- FIN CORRECTION --- ###
+        "Usage - Autre"
     ]
     # Lecture du fichier CSV
-    data = pd.read_csv(file_path, sep=";", encoding="cp1252", usecols=techno_columns + usage_columns)
+    try:
+        data = pd.read_csv(file_path, sep=";", encoding="cp1252", usecols=techno_columns + usage_columns)
+    except ValueError as e:
+        messagebox.showerror("Erreur de CSV", f"Problème de colonnes dans 'experimentation_5G': {e}\nVérifiez les noms des colonnes dans votre CSV.")
+        return
+
+    # Forcer les colonnes en numérique, sinon .sum() ne marche pas
+    all_cols = techno_columns + usage_columns
+    data[all_cols] = data[all_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
 
     # Calcul des totaux pour les technologies et les usages
     techno_totals = data[techno_columns].sum()
@@ -128,17 +139,26 @@ def techno_region(file_path):
     ax.set_xticklabels(region_percentages.index, rotation=45, ha='right', fontsize=10)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title='Technologies', fontsize=9)
     plt.tight_layout()
-    plt.show()
+    
+    # plt.show() # On supprime cette ligne, elle est bloquante et empêche l'affichage dans Tkinter
 
     # appelle de la fonction avec fig comme arg
     afficher_graphique(fig)
 
 def usage_region(file_path):
     # appelle de tout les usage
-    data = pd.read_csv(file_path, sep=";", encoding="cp1252", usecols=[
-        "Région", "Usage - Mobilité connectée", "Usage - Internet des objets",
-        "Usage - Ville intelligente", "Usage - Réalité virtuelle", "Usage - Télémédecine",
-        "Usage - Industrie du futur", "Usage - Technique ou R&D", "Usage - Autre"])
+    try:
+        data = pd.read_csv(file_path, sep=";", encoding="cp1252", usecols=[
+            "Région", "Usage - Mobilité connectée", "Usage - Internet des objets",
+            "Usage - Ville intelligente", "Usage - Réalité virtuelle", "Usage - Télémédecine",
+            "Usage - Industrie du futur", 
+            # ### --- CORRECTION --- ###
+            # "Usage - Technique ou R&D", # On vire cette ligne, elle n'existe pas dans le CSV
+            # ### --- FIN CORRECTION --- ###
+            "Usage - Autre"])
+    except ValueError as e:
+        messagebox.showerror("Erreur de CSV", f"Problème de colonnes dans 'usage_region': {e}\nVérifiez les noms des colonnes dans votre CSV.")
+        return
 
     data = data.dropna(subset=["Région"])
     data["Région"] = data["Région"].str.strip()
@@ -165,7 +185,8 @@ def usage_region(file_path):
     ax.set_xticklabels(region_percentages.index, rotation=45, ha='right', fontsize=10)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title='Usages', fontsize=9)
     plt.tight_layout()
-    plt.show() # montrer le graphique
+    
+    # plt.show() # On supprime cette ligne aussi, même problème que techno_region
 
     # pour tkinter afficher le graphique
     afficher_graphique(fig)
@@ -203,8 +224,8 @@ def araigne_usage_techno(file_path):
         encoding="cp1252",
         usecols=["Région", "Usage - Mobilité connectée", "Usage - Internet des objets",
                  "Usage - Ville intelligente", "Usage - Réalité virtuelle", "Usage - Télémédecine",
-                 "Usage - Industrie du futur", "Usage - Technique ou R&D", "Usage - Autre"]
-    )
+                 "Usage - Industrie du futur", "Usage - Autre"]
+    ) # Note : 'Technique ou R&D' n'était déjà pas ici, donc pas de bug
 
     tech_data = tech_data.dropna(subset=["Région"])
     usage_data = usage_data.dropna(subset=["Région"])
@@ -212,8 +233,8 @@ def araigne_usage_techno(file_path):
     tech_data["Région"] = tech_data["Région"].str.strip()
     usage_data["Région"] = usage_data["Région"].str.strip()
 
-    tech_data.iloc[:, 1:] = tech_data.iloc[:, 1:].apply(pd.to_numeric, errors='coerce')
-    usage_data.iloc[:, 1:] = usage_data.iloc[:, 1:].apply(pd.to_numeric, errors='coerce')
+    tech_data.iloc[:, 1:] = tech_data.iloc[:, 1:].apply(pd.to_numeric, errors='coerce').fillna(0)
+    usage_data.iloc[:, 1:] = usage_data.iloc[:, 1:].apply(pd.to_numeric, errors='coerce').fillna(0)
 
     tech_totals = tech_data.groupby("Région").sum()
     usage_totals = usage_data.groupby("Région").sum()
@@ -294,6 +315,8 @@ def folium_map(file_path):
             colorping = "orange"
         elif row["Bande de fréquences"] == "2,6 GHz TDD":
             colorping = "red"
+        else:
+            colorping = "blue" # Ajout d'une couleur par défaut
     # Marker sur la carte
         folium.Marker(
             location=[row["Latitude"], row["Longitude"]],
@@ -310,7 +333,8 @@ def folium_map(file_path):
             <b>Légende des bandes de fréquence</b><br>
             <i style="background-color: green; width: 20px; height: 20px; display: inline-block;"></i> 26 GHz<br>
             <i style="background-color: orange; width: 20px; height: 20px; display: inline-block;"></i> 3,8 GHz<br>
-            <i style="background-color: red; width: 20px; height: 20px; display: inline-block;"></i> 2,6 GHz TDD
+            <i style="background-color: red; width: 20px; height: 20px; display: inline-block;"></i> 2,6 GHz TDD<br>
+            <i style="background-color: blue; width: 20px; height: 20px; display: inline-block;"></i> Autre
         </div>
     """
     france.get_root().html.add_child(folium.Element(legend_html))    
@@ -336,4 +360,4 @@ menu.add_command(label="Usages par région", command=lambda: [nettoyer_graphique
 menu.add_command(label="Comparaison usages et techno", command=lambda: [nettoyer_graphique(), araigne_usage_techno(file_path)])# permet d'ajouter une commande et appeller une fonction
 
 
-fenetre.mainloop() #affichage de la fenetre explique moi ça stp 
+fenetre.mainloop() #affichage de la fenetre
